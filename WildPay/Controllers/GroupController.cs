@@ -3,8 +3,8 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using WildPay.Interfaces;
 using WildPay.Models.Entities;
-using WildPay.Models.ViewModel;
 using WildPay.Models.ViewModels;
+using WildPay.Helpers;
 
 namespace WildPay.Controllers;
 
@@ -26,7 +26,7 @@ public class GroupController : Controller
     public async Task<IActionResult> List()
     {
         var userId = _userManager.GetUserId(User);
-        if (userId is null) return NotFound();
+        if (ManageBadRequests.IsUserIdNull(userId)) return RedirectToAction(default);
 
         var groups = await _groupRepository.GetGroupsAsync(userId);
         return View(groups);
@@ -38,11 +38,8 @@ public class GroupController : Controller
         //Get the group
         Group? group = await _groupRepository.GetGroupByIdAsync(Id);
 
-        //Return not found if no group is found
-        if (group is null) return NotFound();
-
-        //Verify if the User belongs to the group, else we block the access
-        if (_userManager.GetUserId(User) is null || group.ApplicationUsers.FirstOrDefault(el => el.Id == _userManager.GetUserId(User)) is null) return NotFound();
+        ViewBag.Message = ManageBadRequests.CheckGroupRequest(group, _userManager.GetUserId(User));
+        if (!String.IsNullOrEmpty(ViewBag.Message)) return View("~/Views/Shared/CustomizedError");
 
         return View(group);
     }
@@ -59,7 +56,12 @@ public class GroupController : Controller
     public async Task<IActionResult> Add(Group group)
     {
         string? userId = _userManager.GetUserId(User);
-        if (userId is null) return NotFound();
+
+        if (ManageBadRequests.IsUserIdNull(userId))
+        {
+            ViewBag.Message = "Vous n'êtes pas connecté.";
+            return View("~Views/Shared/CustomizedError");
+        }
 
         await _groupRepository.AddGroupAsync(group.Name, group.Image, userId);
         
@@ -72,14 +74,13 @@ public class GroupController : Controller
     {
         Group? group = await _groupRepository.GetGroupByIdAsync(Id);
 
-        if (group is null) return NotFound();
-
-        if (_userManager.GetUserId(User) is null || group.ApplicationUsers.FirstOrDefault(el => el.Id == _userManager.GetUserId(User)) is null) return RedirectToAction("List", "Group");
+        ViewBag.Message = ManageBadRequests.CheckGroupRequest(group, _userManager.GetUserId(User));
+        if (!String.IsNullOrEmpty(ViewBag.Message)) return View("~/Views/Shared/CustomizedError");
 
         UpdateGroupModel updateGroupModel = new UpdateGroupModel
         {
             GroupToUpdate = group,
-            NewMember = new Models.ViewModel.MemberAdded()
+            NewMember = new MemberAdded()
             {
                 GroupId = Id,
                 Email = ""
@@ -95,7 +96,7 @@ public class GroupController : Controller
     {
         Group? groupUpdated = modelUpdated.GroupToUpdate;
 
-        if (groupUpdated is null) return NotFound();
+        if (ManageBadRequests.IsGroupNull(groupUpdated)) return RedirectToAction(default);
 
         if (groupUpdated.Image is null)
         {
@@ -114,15 +115,14 @@ public class GroupController : Controller
         if (modelUpdated.NewMember is null) return NotFound();
 
         MemberAdded newMember = modelUpdated.NewMember;
-        if (newMember is null) return NotFound();
+        if (newMember is null) return RedirectToAction(default);
 
+        // maybe can be replaced by the check model.state
         if (newMember.Email is null) return NotFound();
 
         Group? group = await _groupRepository.GetGroupByIdAsync(newMember.GroupId);
 
-        if (group is null) return NotFound();
-
-        if (_userManager.GetUserId(User) is null || group.ApplicationUsers.FirstOrDefault(el => el.Id == _userManager.GetUserId(User)) is null) return NotFound();
+        if (!ManageBadRequests.IsGroupRequestCorrect(group, _userManager.GetUserId(User))) return NotFound();
 
         // Returns false if no match is found;
         // think about a way to handle the case the email doesn't match a user
@@ -140,11 +140,9 @@ public class GroupController : Controller
 
         ApplicationUser? userToRemove = group.ApplicationUsers.FirstOrDefault(u => u.Id == userId);
 
-        if (group is null) return NotFound();
+        if (ManageBadRequests.IsUserNull(userToRemove)) return NotFound();
 
-        if (userToRemove is null) return NotFound();
-
-        if (_userManager.GetUserId(User) is null || group.ApplicationUsers.FirstOrDefault(el => el.Id == _userManager.GetUserId(User)) is null) return NotFound();
+        if (!ManageBadRequests.IsGroupRequestCorrect(group, _userManager.GetUserId(User))) return NotFound();
 
         ViewBag.user = userToRemove;
         return View("DeleteMember", group);
@@ -156,9 +154,7 @@ public class GroupController : Controller
     {
         Group? userGroup = await _groupRepository.GetGroupByIdAsync(groupId);
 
-        if (userGroup is null) return NotFound();
-
-        if (_userManager.GetUserId(User) is null || userGroup.ApplicationUsers.FirstOrDefault(el => el.Id == _userManager.GetUserId(User)) is null) return NotFound();
+        if (!ManageBadRequests.IsGroupRequestCorrect(group, _userManager.GetUserId(User))) return NotFound();
 
         // Returns false if no match is found;
         // think about a way to handle the case the email doesn't match a user
@@ -173,9 +169,7 @@ public class GroupController : Controller
     {
         Group? group = await _groupRepository.GetGroupByIdAsync(Id);
 
-        if (group is null) return NotFound();
-
-        if (_userManager.GetUserId(User) is null || group.ApplicationUsers.FirstOrDefault(el => el.Id == _userManager.GetUserId(User)) is null) return NotFound();
+        if (!ManageBadRequests.IsGroupRequestCorrect(group, _userManager.GetUserId(User))) return NotFound();
 
         return View(group);
     }

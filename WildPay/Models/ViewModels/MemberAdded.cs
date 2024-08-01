@@ -1,4 +1,4 @@
-﻿namespace WildPay.Models.ViewModel
+﻿namespace WildPay.Models.ViewModels
 {
     public class MemberAdded
     {

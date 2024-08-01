@@ -1,5 +1,4 @@
 ﻿using WildPay.Models.Entities;
-using WildPay.Models.ViewModel;
 
 namespace WildPay.Models.ViewModels
 {

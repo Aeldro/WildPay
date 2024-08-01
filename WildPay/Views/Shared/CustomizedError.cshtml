@@ -1,0 +1,11 @@
+﻿@model ErrorViewModel
+@{
+    ViewData["Title"] = "Erreur";
+}
+
+<h1 class="text-danger">Erreur</h1>
+<h2 class="text-danger">Une erreur s'est produite au moment de votre requête.</h2>
+
+<p>@ViewBag.Message</p>
+
+<a href="@Url.ActionLink(default)">Retour au menu principal</a>
